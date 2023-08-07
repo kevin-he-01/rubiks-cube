@@ -1,0 +1,18 @@
+UPPER:
+  3
+2   4
+  1
+LOWER:
+  7
+6   8
+  5
+
+ / \
+|\U/|
+|F|R|
+ \|/
+
+Optimization: to resolve orientation issues (moving cube around being considered different cube positions)
+can only permit U F R moves thus corner 7 is fixed
+
+turning S8 into S7 symmetric group

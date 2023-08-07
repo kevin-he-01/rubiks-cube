@@ -1,0 +1,62 @@
+UPPER:
+  3
+1   2
+  0
+LOWER:
+  7
+5   6
+  4
+
+7 is fixed
+
+Bit coding:
+bbb = zyx (Ex. 101 111 001)
+
+x   y
+ \ /
+  |
+  z
+
+  .
+ / \
+. U .
+|\ /|
+|F|R|
+. | .
+ \|/
+
+Orientation convention:
+Upper layer: 0 is up
+Lower layer: 0 is down
+
+Orientation within an upper layer corner:
+  .
+ / \
+. 0 .
+|\ /|
+|1|2|
+. | .
+ \|/
+
+Lower layer is just that rotated 180 degrees, thus:
+  .
+ /|\
+/ | \
+|2|1|
+|/0\|
+ \./
+
+Plan for SIMD pipeline:
+
+- orientation values are 8*x for x in {0, 1, 2}: 0, 8, 16
+    - also to make hashing easier
+- ENCODE orientation and position TOGETHER: 8*o + p
+- gets shuffled together
+
+- steps:
+shuffle position and orientation (together in a single cell)
+add orientation by +{1} or +{2}
+compare orientation part to >={3} (>=24)
+(conditional subtract -24 if so)
+    comparison result (ff or 00) LOGICAL_AND (-24)
+    add previous number packed
