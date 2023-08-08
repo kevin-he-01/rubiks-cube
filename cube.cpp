@@ -36,6 +36,8 @@ typedef uint64_t cube_t;
 // Non-portable representation
 constexpr cube_t INITIAL_STATE = 0x0706050403020100ULL;
 
+const std::string VALID_FACES = "UFR";
+
 move_t moves[2*NMOVES] = {
     move_t {
         //              0, 1, 2, 3, 4, 5, 6, 7
@@ -156,15 +158,18 @@ void init_db(cubedb &db) {
     }
 }
 
-std::vector<movespec> query_db(cubedb &db, cube_t cube) {
-    std::vector<movespec> route;
+bool query_db(cubedb &db, std::vector<movespec> &route, cube_t cube) {
+    route.clear();
     cube_t current = cube;
+    if (!db.count(current)) {
+        return false;
+    }
     while (db[current].first) {
         route.push_back(db[current].first);
         current = db[current].second;
     }
     std::reverse(route.begin(), route.end());
-    return route;
+    return true;
 }
 
 void print_route(const std::vector<movespec> &route) {
@@ -176,6 +181,65 @@ void print_route(const std::vector<movespec> &route) {
         }
         std::cout << ' ';
     }
+}
+
+void print_query_result(cubedb &db, cube_t cube) {
+    std::vector<movespec> route;
+    if (!query_db(db, route, cube)) {
+        std::cout << "NO ROUTE\n";
+        return;
+    }
+    print_route(route);
+}
+
+cube_t move_cube_route(cube_t cube, const std::vector<movespec> &route) {
+    for (movespec move : route) {
+        cube = move_cube(cube, *move);
+    }
+    return cube;
+}
+
+movespec get_movespec(char face, bool inverted) {
+    for (const move_t &move : moves) {
+        if (move.face == face && move.inverted == inverted) {
+            return &move;
+        }
+    }
+    return nullptr;
+}
+
+// Helper function for parse_route
+void commit_lastface(std::vector<movespec> &dest, char &lastface, bool inverted = false) {
+    if (!lastface)
+        return;
+    dest.push_back(get_movespec(lastface, inverted));
+    lastface = '\0';
+}
+
+bool parse_route(std::vector<movespec> &dest, std::string &err, const std::string &description) {
+    dest.clear();
+    char lastface = '\0';
+    for (char c : description) {
+        // TODO: support doubled (Ex. U2)
+        if (c == ' ') // filler, can occur anywhere
+            continue;
+        if (c == '\'') {
+            if (!lastface) {
+                err = "Invalid usage of prime symbol (')";
+                return false;
+            }
+            commit_lastface(dest, lastface, true);
+        } else {
+            commit_lastface(dest, lastface);
+            if (VALID_FACES.find(c) == std::string::npos) {
+                err = std::string("Invalid cube move: ") + c;
+                return false;
+            }
+            lastface = c;
+        }
+    }
+    commit_lastface(dest, lastface);
+    return true;
 }
 
 void stats_demo() {
@@ -195,16 +259,46 @@ void cubedb_demo() {
     init_db(db);
     std::cout << "DB initialized!\n";
 
-    cube_t cube = INITIAL_STATE;
-    std::cout << "Route: "; print_route(query_db(db, cube)); std::cout << "\n";
-    cube = move_cube(cube, moves[0]);
-    std::cout << "Route: "; print_route(query_db(db, cube)); std::cout << "\n";
-    cube = move_cube(cube, moves[1]);
-    std::cout << "Route: "; print_route(query_db(db, cube)); std::cout << "\n";
-    cube = move_cube(cube, moves[2]);
-    std::cout << "Route: "; print_route(query_db(db, cube)); std::cout << "\n";
-    cube = move_cube(cube, moves[2]);
-    std::cout << "Route: "; print_route(query_db(db, cube)); std::cout << "\n";
+    while (true) {
+        std::string input;
+        std::cout << "\nInput cube #: ";
+        cube_t cube;
+        std::cin >> cube;
+        if (std::cin.eof()) {
+            std::cout << "\nBye!\n";
+            break;
+        }
+        std::cout << "Your cube: "; print_cube(cube);
+        std::cout << "Best route to config: "; print_query_result(db, cube); std::cout << "\n";
+    }
+}
+
+void cubedb_optimize_demo() {
+    cubedb db;
+    std::cout << "Initializing DB...\n";
+    init_db(db);
+    std::cout << "DB initialized!\n";
+
+    while (true) {
+        std::string input;
+        std::vector<movespec> route;
+        std::string err;
+        std::cout << "\nInput sequence of moves: ";
+        std::getline(std::cin, input);
+        if (std::cin.eof()) {
+            std::cout << "\nBye!\n";
+            break;
+        }
+        if (!parse_route(route, err, input)) {
+            std::cout << "Error parsing moves: " << err << '\n';
+            continue;
+        }
+        std::cout << "Your route: "; print_route(route); std::cout << "\n";
+
+        cube_t cube = INITIAL_STATE;
+        cube = move_cube_route(cube, route);
+        std::cout << "Best route: "; print_query_result(db, cube); std::cout << "\n";
+    }
 }
 
 int main(int argc, char **argv) {
@@ -218,6 +312,8 @@ int main(int argc, char **argv) {
         stats_demo();
     } else if (command == "cubedb") {
         cubedb_demo();
+    } else if (command == "cubedb-optimize") {
+        cubedb_optimize_demo();
     } else {
         std::cerr << "unknown command: " << command << "\n";
         return 2;
