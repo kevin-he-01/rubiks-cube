@@ -1,6 +1,9 @@
 cube: cube.cpp
 	clang++ -Wall -Wextra -O3 $^ -o $@
 
+cube-gcc: cube.cpp
+	g++ -Wall -Wextra -O3 $^ -o $@
+
 cube-profile: cube.cpp
 	g++ -Wall -Wextra -g -Og -pg $^ -o $@
 

@@ -1,0 +1,13 @@
+- For the special case of 2x2x2 cube, since total # of permutations is very small,
+can use compact/optimal permutation encoding + ternary encoding for the orientations to allow
+the usage of a linear array instead of a hash table:
+    - https://en.wikipedia.org/wiki/Lehmer_code
+    - https://en.wikipedia.org/wiki/Permutation#Numbering_permutations
+    - See https://medium.com/@egonelbre/fast-permutation-compression-4b5e3fe91094
+    - https://www.reddit.com/r/golang/comments/8ems5n/comment/dxxm8et/
+    - https://github.com/clausecker/permcode
+    - https://stackoverflow.com/questions/39623081/how-can-i-effectively-encode-decode-a-compressed-position-description
+    - Possible accelerating instructions:
+        - Intel BMI2 https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set
+            - Ex. _pext_u64
+        - _mm_minpos_epu16

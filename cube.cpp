@@ -1,4 +1,5 @@
 // Pocket cube enumeration
+// Inspired by https://medium.com/@bradenripple/enumerating-all-possible-combinations-of-a-pocket-cube-using-golang-ad80d7af23b
 #include <iostream>
 // #include <unordered_map>
 #include <unordered_set>
@@ -128,12 +129,7 @@ std::vector<int> stat_cube() {
     return distance_counts;
 }
 
-int main() {
-    init_inverses();
-    // cube_t test = INITIAL_STATE;
-    // print_cube(test);
-    // test = move_cube(test, moves[2]); // R
-    // print_cube(test);
+void stats_demo() {
     std::vector<int> stats = stat_cube();
     int total = 0;
     std::cout << "God's #: " << (stats.size() - 1) << "\n";
@@ -142,5 +138,20 @@ int main() {
         total += stats[n];
     }
     std::cout << "Total combos: " << total << "\n";
+}
+
+int main(int argc, char **argv) {
+    init_inverses();
+    if (argc != 2) {
+        std::cerr << "usage: ./cube [command]\n";
+        return 2;
+    }
+    std::string command = argv[1];
+    if (command == "stats") {
+        stats_demo();
+    } else {
+        std::cerr << "unknown command: " << command << "\n";
+        return 2;
+    }
     return 0;
 }
