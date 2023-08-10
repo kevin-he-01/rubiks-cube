@@ -1,4 +1,3 @@
-- See if making the set/map ordered (instead of unordered_) improves performance
 - For the special case of 2x2x2 cube, since total # of permutations is very small,
 can use compact/optimal permutation encoding + ternary encoding for the orientations to allow
 the usage of a linear array instead of a hash table:

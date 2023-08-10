@@ -29,7 +29,7 @@ struct move_t {
     uint8_t shuffle[NCORNERS]; // position shuffle
     uint8_t orientation[NCORNERS]; // post-orientation modification (x ORIENT)
     char face;
-    bool inverted;
+    int turn_count; // a number mod 4, 1 is normal turn, 3 is inverted, 2 is double turn
 };
 
 typedef uint64_t cube_t;
@@ -45,21 +45,21 @@ move_t moves[2*NMOVES] = {
         .shuffle =     {2, 0, 3, 1, 4, 5, 6, 7}, // Permutation: (0 1 3 2)
         .orientation = {0, 0, 0, 0, 0, 0, 0, 0},
         .face = 'U',
-        .inverted = false,
+        .turn_count = 1,
     },
     move_t {
         //               0, 1, 2, 3, 4, 5, 6, 7
         .shuffle =     { 1, 5, 2, 3, 0, 4, 6, 7}, // Permutation: (0 4 5 1)
         .orientation = {O2,O1, 0, 0,O1,O2, 0, 0},
         .face = 'F',
-        .inverted = false,
+        .turn_count = 1,
     },
     move_t {
         //               0, 1, 2, 3, 4, 5, 6, 7
         .shuffle =     { 4, 1, 0, 3, 6, 5, 2, 7}, // Permutation: (0 2 6 4)
         .orientation = {O1, 0,O2, 0,O2, 0,O1, 0},
         .face = 'R',
-        .inverted = false,
+        .turn_count = 1,
     },
     // The rest (inverse operations) will be filled in
 };
@@ -102,7 +102,7 @@ void invert_move(move_t &dst, const move_t &src) {
         }
     }
     dst.face = src.face;
-    dst.inverted = !src.inverted;
+    dst.turn_count = 4 - src.turn_count;
 }
 
 void init_inverses() {
@@ -177,8 +177,13 @@ void print_route(const std::vector<movespec> &route) {
     for (movespec spec : route) {
         // Assume non-null
         std::cout << spec->face;
-        if (spec->inverted) {
-            std::cout << '\'';
+        switch (spec->turn_count) {
+            case 2:
+                std::cout << '2';
+                break;
+            case 3:
+                std::cout << '\'';
+                break;
         }
         std::cout << ' ';
     }
@@ -200,9 +205,9 @@ cube_t move_cube_route(cube_t cube, const std::vector<movespec> &route) {
     return cube;
 }
 
-movespec get_movespec(char face, bool inverted) {
+movespec get_movespec(char face, int turn_count) {
     for (const move_t &move : moves) {
-        if (move.face == face && move.inverted == inverted) {
+        if (move.face == face && move.turn_count == turn_count) {
             return &move;
         }
     }
@@ -210,10 +215,10 @@ movespec get_movespec(char face, bool inverted) {
 }
 
 // Helper function for parse_route
-void commit_lastface(std::vector<movespec> &dest, char &lastface, bool inverted = false) {
+void commit_lastface(std::vector<movespec> &dest, char &lastface, int turn_count = 1) {
     if (!lastface)
         return;
-    dest.push_back(get_movespec(lastface, inverted));
+    dest.push_back(get_movespec(lastface, turn_count));
     lastface = '\0';
 }
 
