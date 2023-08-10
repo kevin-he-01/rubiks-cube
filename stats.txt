@@ -1,17 +1,38 @@
-God's #: 14
-n = 0, q = 1
-n = 1, q = 6
-n = 2, q = 27
-n = 3, q = 120
-n = 4, q = 534
-n = 5, q = 2256
-n = 6, q = 8969
-n = 7, q = 33058
-n = 8, q = 114149
-n = 9, q = 360508
-n = 10, q = 930588
-n = 11, q = 1350852
-n = 12, q = 782536
-n = 13, q = 90280
-n = 14, q = 276
+$ ./cube stats
+(Half turn metric)
+God's #: 11
+n = 0, count = 1
+n = 1, count = 9
+n = 2, count = 54
+n = 3, count = 321
+n = 4, count = 1847
+n = 5, count = 9992
+n = 6, count = 50136
+n = 7, count = 227536
+n = 8, count = 870072
+n = 9, count = 1887748
+n = 10, count = 623800
+n = 11, count = 2644
 Total combos: 3674160
+Took 11878.1 ms to compute
+
+$ ./cube -q stats
+(Quarter turn metric)
+God's #: 14
+n = 0, count = 1
+n = 1, count = 6
+n = 2, count = 27
+n = 3, count = 120
+n = 4, count = 534
+n = 5, count = 2256
+n = 6, count = 8969
+n = 7, count = 33058
+n = 8, count = 114149
+n = 9, count = 360508
+n = 10, count = 930588
+n = 11, count = 1350852
+n = 12, count = 782536
+n = 13, count = 90280
+n = 14, count = 276
+Total combos: 3674160
+Took 8167.61 ms to compute

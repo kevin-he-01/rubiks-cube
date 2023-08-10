@@ -30,8 +30,8 @@ cube[0] = (1, 0)
 cube[1] = (2, 0)
 cube[2] = (0, 0)
 print(to_cube_t(cube))
-# Formula: F F R U F F U' F R F R' F
-# Formula: F2 R U F2 U' F R F R' F
+# Best quarter turn formula: F F R U F F U' F R F R' F
+# Best half turn formula   : R F' U F2 U' F R F2 R2
 
 # 3 corner clockwise (last step)
 cube[0] = (2, 0)
@@ -39,7 +39,7 @@ cube[1] = (0, 0)
 cube[2] = (1, 0)
 print(to_cube_t(cube))
 # Quarter formula: R U R F' R F R R F U F F
-# Quarter formula: R U R F' R F R2 F U F2
+# Best half turn : F' R U' R2 U R' F' R2 F2
 
 class Face(Enum):
     U = auto()

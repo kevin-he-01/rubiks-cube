@@ -22,9 +22,6 @@
 // Number of corners in cube
 #define NCORNERS 8
 
-// Number of "basic" (non-inverted) moves
-#define NMOVES 3
-
 struct move_t {
     uint8_t shuffle[NCORNERS]; // position shuffle
     uint8_t orientation[NCORNERS]; // post-orientation modification (x ORIENT)
@@ -39,7 +36,7 @@ constexpr cube_t INITIAL_STATE = 0x0706050403020100ULL;
 
 const std::string VALID_FACES = "UFR";
 
-move_t moves[2*NMOVES] = {
+move_t moves[] = {
     move_t {
         //              0, 1, 2, 3, 4, 5, 6, 7
         .shuffle =     {2, 0, 3, 1, 4, 5, 6, 7}, // Permutation: (0 1 3 2)
@@ -61,8 +58,10 @@ move_t moves[2*NMOVES] = {
         .face = 'R',
         .turn_count = 1,
     },
-    // The rest (inverse operations) will be filled in
 };
+
+std::vector<move_t> allowed_moves;
+std::vector<move_t> all_moves;
 
 void print_cube(const cube_t &cube) {
     const uint8_t *cube_val = (const uint8_t *)&cube;
@@ -92,6 +91,17 @@ cube_t move_cube(const cube_t &cube, const move_t &move) {
     return result_cube;
 }
 
+void double_move(move_t &dst, const move_t &src) {
+    // Works specifically for quarter turns ONLY (turn_count = +- 1)
+    for (size_t i = 0; i < 8; i++) {
+        dst.shuffle[i] = src.shuffle[src.shuffle[i]];
+        // Orientation is not affected by double turns
+        dst.orientation[i] = 0;
+    }
+    dst.face = src.face;
+    dst.turn_count = 2;
+}
+
 void invert_move(move_t &dst, const move_t &src) {
     for (size_t i = 0; i < 8; i++) {
         dst.shuffle[src.shuffle[i]] = i;
@@ -103,12 +113,6 @@ void invert_move(move_t &dst, const move_t &src) {
     }
     dst.face = src.face;
     dst.turn_count = 4 - src.turn_count;
-}
-
-void init_inverses() {
-    for (int i = 0; i < NMOVES; i++) {
-        invert_move(moves[NMOVES + i], moves[i]);
-    }
 }
 
 std::vector<int> stat_cube() {
@@ -127,7 +131,7 @@ std::vector<int> stat_cube() {
             distance_counts.push_back(0);
         }
         distance_counts[dist]++;
-        for (const move_t &move : moves) {
+        for (const move_t &move : allowed_moves) {
             auto w = move_cube(v, move);
             if (visited.count(w))
                 continue;
@@ -149,7 +153,7 @@ void init_db(cubedb &db) {
     while (!bfs_queue.empty()) {
         cube_t v = bfs_queue.front();
         bfs_queue.pop();
-        for (const move_t &move : moves) {
+        for (const move_t &move : allowed_moves) {
             auto w = move_cube(v, move);
             if (db.count(w))
                 continue;
@@ -206,7 +210,7 @@ cube_t move_cube_route(cube_t cube, const std::vector<movespec> &route) {
 }
 
 movespec get_movespec(char face, int turn_count) {
-    for (const move_t &move : moves) {
+    for (const move_t &move : all_moves) {
         if (move.face == face && move.turn_count == turn_count) {
             return &move;
         }
@@ -218,7 +222,12 @@ movespec get_movespec(char face, int turn_count) {
 void commit_lastface(std::vector<movespec> &dest, char &lastface, int turn_count = 1) {
     if (!lastface)
         return;
-    dest.push_back(get_movespec(lastface, turn_count));
+    movespec move = get_movespec(lastface, turn_count);
+    if (!move) {
+        std::cerr << "ERROR: Move not found: face=" << lastface << ", count=" << turn_count << '\n';
+        exit(EXIT_FAILURE);
+    }
+    dest.push_back(move);
     lastface = '\0';
 }
 
@@ -226,7 +235,6 @@ bool parse_route(std::vector<movespec> &dest, std::string &err, const std::strin
     dest.clear();
     char lastface = '\0';
     for (char c : description) {
-        // TODO: support doubled (Ex. U2)
         if (c == ' ') // filler, can occur anywhere
             continue;
         if (c == '\'') {
@@ -234,7 +242,13 @@ bool parse_route(std::vector<movespec> &dest, std::string &err, const std::strin
                 err = "Invalid usage of prime symbol (')";
                 return false;
             }
-            commit_lastface(dest, lastface, true);
+            commit_lastface(dest, lastface, 3);
+        } else if (c == '2') {
+            if (!lastface) {
+                err = "Invalid usage of half turn specifier";
+                return false;
+            }
+            commit_lastface(dest, lastface, 2);
         } else {
             commit_lastface(dest, lastface);
             if (VALID_FACES.find(c) == std::string::npos) {
@@ -248,7 +262,7 @@ bool parse_route(std::vector<movespec> &dest, std::string &err, const std::strin
     return true;
 }
 
-void stats_demo() {
+void stats_demo(bool quarter_turn_metric) {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
     using std::chrono::duration;
@@ -261,9 +275,10 @@ void stats_demo() {
     duration<double, std::milli> ms_double = t2 - t1;
 
     int total = 0;
+    std::cout << (quarter_turn_metric ? "(Quarter turn metric)\n" : "(Half turn metric)\n");
     std::cout << "God's #: " << (stats.size() - 1) << "\n";
     for (size_t n = 0; n < stats.size(); n++) {
-        std::cout << "n = " << n << ", q = " << stats[n] << "\n";
+        std::cout << "n = " << n << ", count = " << stats[n] << "\n";
         total += stats[n];
     }
     std::cout << "Total combos: " << total << "\n";
@@ -318,15 +333,76 @@ void cubedb_optimize_demo() {
     }
 }
 
-int main(int argc, char **argv) {
-    init_inverses();
-    if (argc != 2) {
-        std::cerr << "usage: ./cube [command]\n";
-        return 2;
+void init_allowed_moves(bool quarter_turn_metric) {
+    for (const move_t &move : moves) {
+        all_moves.push_back(move);
+        allowed_moves.push_back(move);
     }
-    std::string command = argv[1];
+    for (const move_t &move : moves) {
+        move_t inverted;
+        invert_move(inverted, move);
+        all_moves.push_back(inverted);
+        allowed_moves.push_back(inverted);
+    }
+    for (const move_t &move : moves) {
+        move_t doubled;
+        double_move(doubled, move);
+        all_moves.push_back(doubled);
+        if (!quarter_turn_metric) {
+            allowed_moves.push_back(doubled);
+        }
+    }
+}
+
+void usage(bool full = false) {
+    std::cerr << "usage: ./cube [-h] [-q] COMMAND\n";
+    if (full) {
+        std::cerr
+            << "Help:\n"
+            << "COMMAND: One of the commands (Ex. stats, cubedb, cubedb-optimize)\n"
+            << "-q: Use quarter turn metric (default to half-turn)\n"
+            << "-h: Show this help\n"
+            ;
+    }
+    exit(2);
+}
+
+int main(int argc, char **argv) {
+    bool quarter_turn_metric = false; // default to half-turn metric
+    char **argv_end = argv + argc;
+    char **curr_arg = argv + 1;
+    std::string command;
+    bool has_command = false;
+    while (curr_arg < argv_end) {
+        std::string arg = *curr_arg;
+        if (arg.length() >= 1 && arg[0] == '-') {
+            // Option arg
+            if (arg == "-q") {
+                quarter_turn_metric = true;
+            } else if (arg == "-h") {
+                usage(true);
+            } else {
+                std::cerr << "Unrecognized option: " << arg << '\n';
+                usage();
+            }
+        } else {
+            if (has_command) {
+                std::cerr << "Got extra argument: " << arg << '\n';
+                usage();
+            }
+            has_command = true;
+            command = arg;
+        }
+        curr_arg++;
+    }
+    if (!has_command) {
+        std::cerr << "No command specified\n";
+        usage();
+    }
+
+    init_allowed_moves(quarter_turn_metric);
     if (command == "stats") {
-        stats_demo();
+        stats_demo(quarter_turn_metric);
     } else if (command == "cubedb") {
         cubedb_demo();
     } else if (command == "cubedb-optimize") {
