@@ -17,6 +17,8 @@ x   y
   |
   z
 
+Where corner 0 is at the origin
+
   .
  / \
 . U .

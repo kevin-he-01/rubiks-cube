@@ -10,6 +10,7 @@
 #include <queue>
 #include <utility>
 #include <algorithm>
+#include <chrono>
 
 // Orientation indicator place
 #define ORIENT 8
@@ -243,7 +244,17 @@ bool parse_route(std::vector<movespec> &dest, std::string &err, const std::strin
 }
 
 void stats_demo() {
-    std::vector<int> stats = stat_cube();
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
+    auto t1 = high_resolution_clock::now();
+    std::vector<int> stats = stat_cube(); // Computing cube stats
+    auto t2 = high_resolution_clock::now();
+
+    duration<double, std::milli> ms_double = t2 - t1;
+
     int total = 0;
     std::cout << "God's #: " << (stats.size() - 1) << "\n";
     for (size_t n = 0; n < stats.size(); n++) {
@@ -251,6 +262,7 @@ void stats_demo() {
         total += stats[n];
     }
     std::cout << "Total combos: " << total << "\n";
+    std::cout << "Took " << ms_double.count() << " ms to compute\n";
 }
 
 void cubedb_demo() {
