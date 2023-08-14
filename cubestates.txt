@@ -1,0 +1,8 @@
+Cube states corresponding to algorithms
+
+Tile colors: ygob  ry gy oy rb  bb rr gg oo wwww
+Cube state: 506097522881071627
+
+2-face Checkerboard: YYYY GB RO BG OR BG OR GB RO WWWW
+Tile colors: 505817147398816003
+Best route to config: U2 F2 R2 F2

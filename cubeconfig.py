@@ -1,5 +1,6 @@
 # Generate cube configuration numbers
 from typing import Iterable
+import sys
 from enum import Enum, auto
 
 ORIENT = 8
@@ -25,21 +26,21 @@ cube = SOLVED_CUBE[:]
 # Formula (least quarter turns): U U F U R R U R F U' F R F
 #                            OR: U2 F U R2 U R F U' F R F
 
-# 3 corner counterclockwise (last step)
-cube[0] = (1, 0)
-cube[1] = (2, 0)
-cube[2] = (0, 0)
-print(to_cube_t(cube))
-# Best quarter turn formula: F F R U F F U' F R F R' F
-# Best half turn formula   : R F' U F2 U' F R F2 R2
+# # 3 corner counterclockwise (last step)
+# cube[0] = (1, 0)
+# cube[1] = (2, 0)
+# cube[2] = (0, 0)
+# print(to_cube_t(cube))
+# # Best quarter turn formula: F F R U F F U' F R F R' F
+# # Best half turn formula   : R F' U F2 U' F R F2 R2
 
-# 3 corner clockwise (last step)
-cube[0] = (2, 0)
-cube[1] = (0, 0)
-cube[2] = (1, 0)
-print(to_cube_t(cube))
-# Quarter formula: R U R F' R F R R F U F F
-# Best half turn : F' R U' R2 U R' F' R2 F2
+# # 3 corner clockwise (last step)
+# cube[0] = (2, 0)
+# cube[1] = (0, 0)
+# cube[2] = (1, 0)
+# print(to_cube_t(cube))
+# # Quarter formula: R U R F' R F R R F U F F
+# # Best half turn : F' R U' R2 U R' F' R2 F2
 
 class Face(Enum):
     U = auto()
@@ -95,7 +96,7 @@ def cube_state_from_corners(corners: list[str]):
         assert len(corner) == 3, 'Corner must have length 3'
         colors.update(corner)
     assert len(colors) == 6, 'Must have exactly 6 colors'
-    print('Set of colors:', colors)
+    # print('Set of colors:', colors)
     lastcorner = corners[-1]
     color2face[lastcorner[0]] = Face.D
     color2face[lastcorner[1]] = Face.L
@@ -109,17 +110,17 @@ def cube_state_from_corners(corners: list[str]):
                 candidate_rcolors.difference_update(corner)
         assert len(candidate_rcolors) == 1, f'Invalid cube: candidate reverses for {color}: {candidate_rcolors}'
         rcolor = candidate_rcolors.pop()
-        print(f'Opposite color of {color}: {rcolor}')
+        # print(f'Opposite color of {color}: {rcolor}')
         color2face[rcolor] = oppose_face
-    print(f'Inferred opposite relations: {color2face}')
+    # print(f'Inferred opposite relations: {color2face}')
     ocolors = '' # Orientation determining colors
     for color, face in color2face.items():
         if face in [Face.U, Face.D]:
             ocolors += color
-    print(f'Orientation determining colors: {ocolors}')
+    # print(f'Orientation determining colors: {ocolors}')
     assert len(ocolors) == 2
     positions = [sum(get_coord(color2face[color]) for color in corner) for corner in corners]
-    print('Positions   :', positions)
+    # print('Positions   :', positions)
     assert set(positions) == set(range(NCORNERS))
     assert positions[7] == 7 # assume corner 7 is in the right position
     # orientations = [sum(corner.index(ocolor) for ocolor in ocolors) for corner in corners]
@@ -131,8 +132,101 @@ def cube_state_from_corners(corners: list[str]):
                 break
         else:
             assert False, f'Bad corner: {corner}'
-    print('Orientations:', orientations)
+    # print('Orientations:', orientations)
     return to_cube_t(zip(positions, orientations))
+
+CUBE_MESH = '''
+     +----+
+     |A B |
+     |C D |
++----+----+----+----+
+|E F |G H |I J |K L |
+|M N |O P |Q R |S T |
++----+----+----+----+
+     |U V |
+     |W X |
+     +----+
+'''
+
+ansi_bg_colors = {
+    'Y': '\x1b[43m',
+    'W': '\x1b[47m',
+    'B': '\x1b[44m',
+    'G': '\x1b[42m',
+    'R': '\x1b[41m',
+    'O': '\x1b[48;5;202m',
+}
+ANSI_RESET = '\x1b[0m'
+
+ALL_COLORS = 'YWBGRO'
+ALL_TILES = 'ABCDEFGHIJKLMNOPQRSTUVWX'
+CMAP = dict[str, str]
+
+CORNER_DEF = [
+    'DHI', # 0
+    'CFG', # 1
+    'BJK', # 2
+    'ALE', # 3
+    'VQP', # 4
+    'UON', # 5
+    'XSR', # 6
+    'WMT', # 7
+]
+
+def assign_colors(tile_range: str, colors: str) -> CMAP:
+    assert len(colors) == len(tile_range)
+    mp: dict[str, str] = {}
+    for tile, color in zip(tile_range, colors):
+        assert color in ALL_COLORS, f'Unknown color: {color}'
+        mp[tile] = color
+    return mp
+
+def display_mesh(cmap: CMAP):
+    colored = False
+    for char in CUBE_MESH:
+        if char in ALL_TILES:
+            print(ansi_bg_colors[cmap[char]], end='')
+        print(char, end='')
+        if colored:
+            print(ANSI_RESET, end='')
+            colored = False
+        if char in ALL_TILES:
+            colored = True
+
+def cmap_to_cube_state(cmap: CMAP):
+    corners: list[str] = [
+        ''.join(cmap[c] for c in CORNER_DEF[i])
+        for i in range(NCORNERS)
+    ]
+    return cube_state_from_corners(corners)
+
+def input_cube_range(tile_range: str):
+    print(CUBE_MESH)
+    colors = input(f'Input tile colors for range {tile_range}> ')
+    colors = colors.upper().replace(' ', '')
+    if len(colors) != len(tile_range):
+        print(f'Wrong number of entries. Expect {len(tile_range)}, got {len(colors)}', file=sys.stderr)
+        return None
+    for color in colors:
+        if color not in ALL_COLORS:
+            print(f'Invalid color: {color}', file=sys.stderr)
+            return None
+    cmap = assign_colors(tile_range, colors)
+    display_mesh(cmap)
+    if not input('Is the above cube correct? [Y/n] ').upper().startswith('Y'):
+        return None
+    return cmap
+
+while True:
+    try:
+        cmap = input_cube_range(ALL_TILES)
+    except EOFError:
+        print()
+        break
+    if cmap is None:
+        print('Try again')
+        continue
+    print('Cube state:', cmap_to_cube_state(cmap))
 
 # Test
 # Front face: Green/blue checkerboard
