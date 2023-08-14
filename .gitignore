@@ -1,4 +1,5 @@
 bin/
 cube
+cube-simd
 *.out
 /profiles

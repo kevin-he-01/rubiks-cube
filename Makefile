@@ -1,6 +1,9 @@
 cube: cube.cpp
 	clang++ -Wall -Wextra -O3 $^ -o $@
 
+cube-simd: cube.cpp
+	clang++ -mssse3 -DSIMD -Wall -Wextra -O3 $^ -o $@
+
 bin/cube-gcc: cube.cpp
 	g++ -Wall -Wextra -O3 $^ -o $@
 
@@ -14,6 +17,6 @@ bin/cube-debug: cube.cpp
 	clang++ -Wall -Wextra -Og -g $^ -o $@
 
 clean:
-	rm -f cube bin/cube-*
+	rm -f cube cube-simd bin/cube-*
 
 .PHONY: clean

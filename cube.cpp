@@ -75,7 +75,63 @@ void print_cube(const cube_t &cube) {
     std::cout << "\n";
 }
 
-// TODO: use SIMD version of this
+#ifdef SIMD
+
+#include <immintrin.h>
+cube_t move_cube(cube_t cube, const move_t &move) {
+    uint64_t shuffle;
+    memcpy(&shuffle, move.shuffle, sizeof(uint64_t));
+    uint64_t orientation;
+    memcpy(&orientation, move.orientation, sizeof(uint64_t));
+    __m128i packed_cube = _mm_setr_epi64((__m64)cube, (__m64)0ULL);
+    __m128i packed_shuffle = _mm_setr_epi64((__m64)shuffle, (__m64)0ULL);
+    __m128i packed_orientation = _mm_setr_epi64((__m64)orientation, (__m64)0ULL);
+    __m128i modulus = _mm_setr_epi8(
+        OMOD,
+        OMOD,
+        OMOD,
+        OMOD,
+        OMOD,
+        OMOD,
+        OMOD,
+        OMOD,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    );
+    __m128i modulus_compare = _mm_setr_epi8(
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        OMOD - 1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    );
+    packed_cube = _mm_shuffle_epi8(packed_cube, packed_shuffle);
+    packed_cube = _mm_add_epi8(packed_cube, packed_orientation);
+    __m128i overflow = _mm_cmpgt_epi8(packed_cube, modulus_compare);
+    modulus = _mm_and_si128(modulus, overflow);
+    packed_cube = _mm_sub_epi8(packed_cube, modulus);
+    return _mm_extract_epi64(packed_cube, 0);
+}
+
+#else
+
 cube_t move_cube(const cube_t &cube, const move_t &move) {
     // cube_t result;
     uint8_t result[NCORNERS];
@@ -90,6 +146,8 @@ cube_t move_cube(const cube_t &cube, const move_t &move) {
     memcpy(&result_cube, &result, sizeof(result)); // Avoid strict aliasing violation
     return result_cube;
 }
+
+#endif
 
 void double_move(move_t &dst, const move_t &src) {
     // Works specifically for quarter turns ONLY (turn_count = +- 1)
