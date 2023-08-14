@@ -104,28 +104,10 @@ cube_t move_cube(cube_t cube, const move_t &move) {
         0,
         0
     );
-    __m128i modulus_compare = _mm_setr_epi8(
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        OMOD - 1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-    );
     packed_cube = _mm_shuffle_epi8(packed_cube, packed_shuffle);
     packed_cube = _mm_add_epi8(packed_cube, packed_orientation);
-    __m128i overflow = _mm_cmpgt_epi8(packed_cube, modulus_compare);
-    modulus = _mm_and_si128(modulus, overflow);
+    __m128i not_overflow = _mm_cmplt_epi8(packed_cube, modulus); // packed_cube < modulus === NOT (packed_cube >= modulus)
+    modulus = _mm_andnot_si128(not_overflow, modulus);
     packed_cube = _mm_sub_epi8(packed_cube, modulus);
     return _mm_extract_epi64(packed_cube, 0);
 }
